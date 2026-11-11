@@ -4,7 +4,7 @@ A small, self-hosted coding practice platform. Read a problem, write a solution 
 
 It ships with one problem, **Ants on a Rod**, which has 3 example tests, 43 hidden tests (11 of them with N ≈ 100,000, so O(N²) solutions time out), reference solutions in all four languages, an editorial, and a brute-force simulator that cross-checks every expected answer.
 
-**Try it: [ashermatsh.github.io/code-arena](https://ashermatsh.github.io/code-arena/)**, hosted on GitHub Pages. Python and JavaScript run right in your browser.
+**Try it: [ashermatsh.github.io/code-arena](https://ashermatsh.github.io/code-arena/)**, hosted on GitHub Pages. All four languages compile and run right in your browser; no server involved.
 
 ![Code Arena: an accepted C++ submission for Ants on a Rod](docs/screenshot.png)
 
@@ -22,7 +22,7 @@ It ships with one problem, **Ants on a Rod**, which has 3 example tests, 43 hidd
 
 ### Option 1: Node (quickest)
 
-Requires Node.js 20+. There are no npm dependencies, so there's nothing to install. Each language works if its toolchain is on the `PATH` (`g++`, `javac`/`java`, `python3`); missing ones show as "not installed".
+Requires Node.js 20+. The server has no npm dependencies, so there's nothing to install. Each language works if its toolchain is on the `PATH` (`g++`, `javac`/`java`, `python3`); missing ones show as "not installed".
 
 ```bash
 npm start
@@ -40,15 +40,33 @@ Open <http://localhost:3000>. The image bundles g++, OpenJDK 17, Python 3 and No
 
 ### Option 3: GitHub Pages (always on, no server)
 
-The front-end also works without a judge server. In that case it switches to **in-browser mode**: JavaScript runs in a Web Worker and Python runs in [Pyodide](https://pyodide.org) (CPython compiled to WebAssembly). C++ and Java need the server.
+The front-end also works without a judge server. In that case it switches to **in-browser mode** and every language runs inside the visitor's browser:
+
+| Language | How it runs | First use | After that |
+| --- | --- | --- | --- |
+| Python 3 | [Pyodide](https://pyodide.org) (CPython in WebAssembly), in a Web Worker | ~10 MB download | instant |
+| JavaScript | a Web Worker | nothing to download | instant |
+| C++17 | [Clang/LLD compiled to WebAssembly](https://yowasp.org) (`@yowasp/clang`), program runs as WASI in a Web Worker | ~18 MB compiler download, plus an 11.5 MB precompiled header fetched in the background | ~1–2 s per compile |
+| Java 17 | [CheerpJ](https://cheerpj.com) (a Java runtime in WebAssembly) running the real `javac` | Java runtime download, plus a ~15 s first compile while `javac` warms up | ~5–8 s per compile |
+
+Selecting C++ or Java starts loading its toolchain in the background, so it is usually ready by the time you click Run. Everything is cached by the browser after the first visit.
+
+Differences from the judge server:
+
+- **C++** is built with `-fno-exceptions` (WebAssembly WASI has no C++ exception runtime): `try`/`throw` don't compile, and errors such as an out-of-range `.at()` abort with a message instead of throwing. Very deep recursion can hit the browser's stack limit.
+- **Java**: CheerpJ runs on the page's main thread and can't be interrupted from outside, so before compiling, the site adds a cheap time check to every loop and method (`shared/java-instrument.js`). Your line numbers are unchanged. The page is unresponsive while Java code runs, for at most the time limit. Stack traces don't include line numbers. CheerpJ is free for personal and non-commercial use and must be loaded from its CDN; see [its licensing](https://cheerpj.com/licensing/) for anything else.
+- The hidden tests ship to the browser (it has to grade them itself), so a determined user can read them.
 
 On every push to `main`, `.github/workflows/pages.yml` builds the static site and pushes it to the `gh-pages` branch. GitHub Pages serves that branch (**Settings → Pages → Deploy from a branch → `gh-pages` / root**). To build the static site yourself:
 
 ```bash
+npm install
+```
+```bash
 npm run build:static
 ```
 
-That writes the site to `dist/`. In this mode the hidden tests ship to the browser (it has to grade them itself), so a determined user can read them.
+That writes the site to `dist/`. `npm install` is optional; it fetches the WebAssembly Clang used to precompile the C++ header, which makes in-browser C++ compiles about 3x faster.
 
 ## Tests
 
@@ -65,6 +83,7 @@ The suite (Node's built-in test runner, about 30 seconds) compiles and runs real
 - every supported parameter/return type round-trips through every language's driver;
 - every stored test satisfies the constraints and matches the reference solution;
 - the reference solution agrees with an exact **physical simulation** of the ants (`problems/ants-on-a-rod/tools/verify.py`): every direction string up to length 10, plus random longer ones, each on several random rod layouts;
+- the Java instrumentation used in the browser keeps tricky valid Java (records, pattern matching, `while (true)` returns, lambdas, text blocks…) compiling with identical results, and stops runaway loops and recursion;
 - the HTTP API (including that hidden tests and files outside `public/` aren't served) and the static build.
 
 CI (`.github/workflows/ci.yml`) runs the same suite with all four toolchains installed.
@@ -75,7 +94,7 @@ CI (`.github/workflows/ci.yml`) runs the same suite with all four toolchains ins
 2. One process runs **every test in sequence**, which keeps the JVM and interpreter start-up cost to a single run. Before each test the driver prints a random marker; the server uses these markers to time each test, attribute stdout, and kill the process as soon as one test goes over its limit.
 3. Results (return value as JSON, plus the time spent inside your function) are compared with the expected answers by `shared/judging.js`. The in-browser mode uses the same file, so both modes grade identically.
 
-Limits: per-test time is the problem's `timeLimitMs` (1000 ms for Ants on a Rod) times a language factor (C++ ×1, Java ×2, JavaScript ×2, Python ×3; Python in the browser ×6). Each run is also capped at 1 GB of address space for C++/Python (512 MB heap for Java/JavaScript), a CPU-time ceiling and a 2 MB stdout cap. Up to `MAX_CONCURRENCY` submissions (default: number of CPUs, max 4) run at once; the rest queue.
+Limits: per-test time is the problem's `timeLimitMs` (1000 ms for Ants on a Rod) times a language factor (server: C++ ×1, Java ×2, JavaScript ×2, Python ×3; browser: C++ ×2, Java ×3, JavaScript ×2, Python ×6). Each run is also capped at 1 GB of address space for C++/Python (512 MB heap for Java/JavaScript), a CPU-time ceiling and a 2 MB stdout cap. Up to `MAX_CONCURRENCY` submissions (default: number of CPUs, max 4) run at once; the rest queue.
 
 > **Security note:** submitted code runs as a normal process with resource limits, not in a full sandbox. That's fine on your own machine or inside the provided Docker setup. Before exposing the judge to untrusted users on the public internet, put it behind authentication and run it in a stronger sandbox (gVisor, Firecracker, or nsjail). The GitHub Pages mode has no such concern: code only ever runs in the visitor's own browser.
 
@@ -126,11 +145,15 @@ server/          judge server (Node built-ins only)
   drivers.js       starter code + per-language drivers generated from signatures
   languages.js     compile/run commands, toolchain detection
   problems.js      loads problems/ from disk
-shared/judging.js  grading + result formatting (used by server *and* browser)
+shared/            used by both the server and the browser
+  judging.js       grading, result formatting, test input encoding
+  toolchains.js    in-browser compiler versions and flags
+  java-instrument.js  time checks for Java running in the browser
 public/          front-end (plain ES modules, no build step)
   js/app.js        problem list and workspace UI
   js/backend.js    server backend / in-browser backend
-  js/runners/      Web Workers for JavaScript and Python (Pyodide)
+  js/runners/      in-browser runners: JavaScript, Python (Pyodide),
+                   C++ (cpp-worker compiles, wasi-worker runs), Java (java-frame)
 problems/        problem data, reference solutions, test generators
 scripts/         static build for GitHub Pages
 test/            test suite

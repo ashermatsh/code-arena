@@ -14,5 +14,8 @@
     "build:static": "node scripts/build-static.js",
     "gen:tests": "python3 problems/ants-on-a-rod/tools/generate_tests.py",
     "verify": "python3 problems/ants-on-a-rod/tools/verify.py"
+  },
+  "devDependencies": {
+    "@yowasp/clang": "22.0.0-git20542-10"
   }
 }

@@ -100,8 +100,8 @@ function renderModePill() {
   } else {
     pill.className = 'mode-pill mode-browser';
     pill.textContent = 'In-browser mode';
-    pill.title = 'No judge server found, so JavaScript and Python run inside your browser. '
-      + 'Start the server (npm start) to use C++ and Java.';
+    pill.title = 'Your code runs inside this browser: C++ (Clang compiled to WebAssembly), '
+      + 'Java (CheerpJ), Python (Pyodide) and JavaScript. Nothing is sent to a server.';
   }
 }
 
@@ -287,6 +287,7 @@ class Workspace {
 
     this.setupSplitters();
     this.mountEditor();
+    backend.prepare?.(this.language);
   }
 
   async mountEditor() {
@@ -393,6 +394,7 @@ class Workspace {
     if (this.editor) store.set(this.codeKey(), this.editor.getValue());
     this.language = lang;
     store.set('language', lang);
+    backend.prepare?.(lang);
     const meta = backend.languages.find((l) => l.id === lang);
     this.editor?.setValue(this.savedCode(lang));
     this.editor?.setLanguage(meta?.monaco || lang);

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Java runtime</title>
+  <!--
+    Hidden frame hosting CheerpJ (a Java runtime in WebAssembly). Keeping it in
+    its own frame isolates its console and lets the page discard it and start a
+    fresh JVM if it ever gets stuck.
+  -->
+</head>
+<body>
+  <pre id="console"></pre>
+  <script type="module">
+    import { CHEERPJ_JAVA_VERSION, CHEERPJ_LOADER } from '../../shared/toolchains.js';
+
+    const consoleEl = document.getElementById('console');
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error(`could not load ${src}`));
+        document.head.appendChild(s);
+      });
+    }
+
+    const ready = (async () => {
+      await loadScript(CHEERPJ_LOADER);
+      await window.cheerpjInit({ version: CHEERPJ_JAVA_VERSION, status: 'none' });
+    })();
+
+    // Let the parent's status text paint before Java blocks the page.
+    const yieldToBrowser = () => new Promise((r) => setTimeout(r, 40));
+
+    // job: { main, solution, input, mark, limitMs, runId, onStatus }
+    window.javaJob = async (job) => {
+      await ready;
+      // /str/ is flat (no subfolders) and javac needs Main.java to be named
+      // Main.java, so sources are overwritten each run; class files go to a
+      // fresh folder so nothing stale from an earlier run is picked up.
+      const src = '/str';
+      const out = `/files/run${Date.now()}-${job.runId}`;
+      window.cheerpOSAddStringFile(`${src}/Main.java`, job.main);
+      window.cheerpOSAddStringFile(`${src}/Solution.java`, job.solution);
+      window.cheerpOSAddStringFile(`${src}/input.txt`, job.input);
+
+      job.onStatus('Compiling…');
+      consoleEl.textContent = '';
+      await yieldToBrowser();
+      const javac = await window.cheerpjRunMain('com.sun.tools.javac.Main', '',
+        '-nowarn', '-encoding', 'UTF-8', '-d', out, `${src}/Main.java`, `${src}/Solution.java`);
+      if (javac !== 0) return { compileError: consoleEl.textContent, srcDir: src };
+
+      job.onStatus('Running…');
+      consoleEl.textContent = '';
+      await yieldToBrowser();
+      const exitCode = await window.cheerpjRunMain('Main', `${out}/`,
+        `${src}/input.txt`, `${out}/results.txt`, job.mark, String(job.limitMs));
+      let results = '';
+      try {
+        results = await (await window.cjFileBlob(`${out}/results.txt`)).text();
+      } catch {
+        // no results were written
+      }
+      return { exitCode, console: consoleEl.textContent, results };
+    };
+    // Compile something tiny so javac is warm before the user's first run.
+    window.javaWarmUp = async () => {
+      await ready;
+      window.cheerpOSAddStringFile('/str/Warmup.java',
+        'import java.util.*;\nclass Warmup { public static void main(String[] a) { List<Integer> l = new ArrayList<>(); for (int i = 0; i < 3; i++) l.add(i); System.out.println(l); } }\n');
+      await window.cheerpjRunMain('com.sun.tools.javac.Main', '', '-nowarn', '-d', `/files/warmup${Date.now()}`, '/str/Warmup.java');
+      consoleEl.textContent = '';
+    };
+    window.javaReady = ready;
+  </script>
+</body>
+</html>

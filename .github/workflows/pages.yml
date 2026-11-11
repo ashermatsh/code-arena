@@ -1,5 +1,6 @@
-# Publishes the in-browser version of the site (JavaScript and Python run
-# client-side) to the gh-pages branch, which GitHub Pages serves at
+# Publishes the in-browser version of the site (C++, Java, Python and
+# JavaScript all run client-side) to the gh-pages branch, which GitHub Pages
+# serves at
 # https://<owner>.github.io/<repo>/
 name: Publish to GitHub Pages
 
@@ -23,6 +24,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+      # installs the WebAssembly Clang used to precompile the C++ header
+      - run: npm ci
       - run: npm run build:static
       - name: Push dist/ to the gh-pages branch
         working-directory: dist

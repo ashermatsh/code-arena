@@ -153,3 +153,26 @@ export function summarize({
   }
   return result;
 }
+
+// ------------------------------------------------------------------ input encoding
+// Line-based format read by every language's driver: the test count, then
+// each argument (arrays as a length line followed by the values).
+
+function encodeValue(type, value, out) {
+  if (type === 'string[]') {
+    out.push(String(value.length), ...value);
+  } else if (type.endsWith('[][]')) {
+    out.push(String(value.length));
+    for (const row of value) encodeValue(type.slice(0, -2), row, out);
+  } else if (type.endsWith('[]')) {
+    out.push(String(value.length), value.map((v) => String(v)).join(' '));
+  } else {
+    out.push(String(value));
+  }
+}
+
+export function encodeTests(fn, tests) {
+  const out = [String(tests.length)];
+  for (const t of tests) fn.params.forEach((p, i) => encodeValue(p.type, t.args[i], out));
+  return `${out.join('\n')}\n`;
+}

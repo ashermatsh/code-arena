@@ -84,9 +84,10 @@ describe('static build', () => {
   it('writes a self-contained site for GitHub Pages', () => {
     const out = mkdtempSync(path.join(os.tmpdir(), 'code-arena-dist-'));
     try {
-      execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-static.js'), out]);
+      execFileSync(process.execPath, [path.join(ROOT, 'scripts/build-static.js'), out, '--no-pch']);
       for (const f of [
-        'index.html', 'js/app.js', 'js/runners/py-worker.js', 'shared/judging.js', 'data/index.json',
+        'index.html', 'js/app.js', 'js/runners/py-worker.js', 'js/runners/cpp-worker.js', 'js/runners/wasi-worker.js',
+        'js/runners/java-frame.html', 'shared/judging.js', 'shared/toolchains.js', 'shared/java-instrument.js', 'data/index.json',
         'data/problems/ants-on-a-rod/problem.json', 'data/problems/ants-on-a-rod/hidden.json',
         'data/problems/ants-on-a-rod/reference.mjs', '.nojekyll',
       ]) {
@@ -94,6 +95,10 @@ describe('static build', () => {
       }
       const problem = JSON.parse(readFileSync(path.join(out, 'data/problems/ants-on-a-rod/problem.json'), 'utf8'));
       assert.ok(problem.starterCode.python.includes('class Solution'));
+      // harnesses for the in-browser C++ and Java runners
+      assert.ok(problem.browser.cpp.includes('/*@@CODE_ARENA_USER_CODE@@*/'));
+      assert.match(problem.browser.java, /final class __ca/);
+      assert.match(problem.browser.javaImports, /^import java\.util\.\*;/);
     } finally {
       rmSync(out, { recursive: true, force: true });
     }

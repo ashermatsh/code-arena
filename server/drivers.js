@@ -107,24 +107,8 @@ export function starterCode(fn) {
 
 // ---------------------------------------------------------------- input encoding
 
-function encodeValue(type, value, out) {
-  if (type === 'string[]') {
-    out.push(String(value.length), ...value);
-  } else if (type.endsWith('[][]')) {
-    out.push(String(value.length));
-    for (const row of value) encodeValue(type.slice(0, -2), row, out);
-  } else if (type.endsWith('[]')) {
-    out.push(String(value.length), value.map((v) => String(v)).join(' '));
-  } else {
-    out.push(String(value));
-  }
-}
-
-export function encodeTests(fn, tests) {
-  const out = [String(tests.length)];
-  for (const t of tests) fn.params.forEach((p, i) => encodeValue(p.type, t.args[i], out));
-  return `${out.join('\n')}\n`;
-}
+// Shared with the browser runners, which encode inputs the same way.
+export { encodeTests } from '../shared/judging.js';
 
 // ---------------------------------------------------------------- python
 
@@ -415,11 +399,41 @@ const JAVA_READERS = {
 // Imports are prepended on the user's first line so compiler line numbers match the editor.
 export const JAVA_IMPORTS = 'import java.util.*; import java.util.function.*; import java.util.stream.*; import java.math.*; ';
 
-export function javaDriver(fn) {
+// In-program time limit for runtimes that cannot be stopped from outside (the
+// browser's Java runtime blocks the page while it runs). The user's code is
+// instrumented to call __ca.t() in every loop and method, and __ca.t() ends
+// the program once the current test is over its time limit.
+const JAVA_WATCHDOG = `
+final class __ca {
+    static long deadline = Long.MAX_VALUE;
+    static String mark = "";
+    static int n;
+
+    static boolean t() {
+        if ((++n & 1023) == 0 && System.nanoTime() > deadline) {
+            System.out.print("\\n" + mark + "TLE\\n");
+            System.out.flush();
+            Runtime.getRuntime().halt(3);
+        }
+        return true;
+    }
+}
+`;
+
+/**
+ * Main.java for a problem. With { watchdog: true } the driver also contains
+ * the __ca class and takes the per-test time limit (ms) as a 4th argument.
+ */
+export function javaDriver(fn, { watchdog = false } = {}) {
   const decls = fn.params
     .map((p, i) => `            ${javaType(p.type)} a${i} = ${JAVA_READERS[p.type]};`)
     .join('\n');
   const call = `sol.${fn.name}(${fn.params.map((_, i) => `a${i}`).join(', ')})`;
+  const setup = watchdog
+    ? `\n        long limitNs = argv.length > 3 ? Long.parseLong(argv[3]) * 1_000_000L : 0;\n        __ca.mark = mark;`
+    : '';
+  const arm = watchdog ? '\n            if (limitNs > 0) __ca.deadline = System.nanoTime() + limitNs;' : '';
+  const disarm = watchdog ? '\n            __ca.deadline = Long.MAX_VALUE;' : '';
   return `import java.io.*;
 import java.lang.reflect.Array;
 import java.nio.charset.StandardCharsets;
@@ -482,15 +496,15 @@ public class Main {
     static void run(String[] argv) throws Exception {
         lines = new String(Files.readAllBytes(Paths.get(argv[0])), StandardCharsets.UTF_8).split("\\n", -1);
         PrintStream out = new PrintStream(new FileOutputStream(argv[1]), false, "UTF-8");
-        String mark = argv[2];
+        String mark = argv[2];${setup}
         int total = Integer.parseInt(next());
         for (int i = 0; i < total; i++) {
 ${decls}
             System.out.print("\\n" + mark + i + "\\n");
             System.out.flush();
             Solution sol = new Solution();
-            long t0 = System.nanoTime();
-            Object res = ${call};
+            long t0 = System.nanoTime();${arm}
+            Object res = ${call};${disarm}
             long t1 = System.nanoTime();
             StringBuilder sb = new StringBuilder();
             write(sb, res);
@@ -517,5 +531,5 @@ ${decls}
         System.exit(0);
     }
 }
-`;
+${watchdog ? JAVA_WATCHDOG : ''}`;
 }
