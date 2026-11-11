@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Code Arena</title>
+  <meta name="description" content="Coding practice platform: solve problems in C++, Java, Python or JavaScript and run them against sample and hidden test cases.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    try {
+      var t = localStorage.getItem('ca:theme');
+      t = t ? JSON.parse(t) : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+      document.documentElement.dataset.theme = t;
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/" aria-label="Code Arena home">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="var(--accent)"/>
+        <path d="M12.5 10 7 16l5.5 6M19.5 10 25 16l-5.5 6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Code Arena</span>
+    </a>
+    <nav class="topnav">
+      <a href="#/" id="nav-problems">Problems</a>
+    </nav>
+    <span class="spacer"></span>
+    <span id="mode-pill" class="mode-pill">Connecting…</span>
+    <button id="theme-toggle" class="btn btn-ghost btn-icon" title="Toggle light / dark theme" aria-label="Toggle theme">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="currentColor"/></svg>
+    </button>
+  </header>
+  <main id="view" class="view"></main>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
