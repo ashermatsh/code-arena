@@ -1,0 +1,18 @@
+{
+  "name": "code-arena",
+  "version": "1.0.0",
+  "description": "A small self-hosted coding practice platform: problems, a code editor, sample and hidden test cases, and a multi-language judge.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "build:static": "node scripts/build-static.js",
+    "gen:tests": "python3 problems/ants-on-a-rod/tools/generate_tests.py",
+    "verify": "python3 problems/ants-on-a-rod/tools/verify.py"
+  }
+}

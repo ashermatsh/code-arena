@@ -1,0 +1,12 @@
+{
+  "title": "Ants on a Rod",
+  "difficulty": "Medium",
+  "tags": ["Simulation", "Math", "Prefix Sum"],
+  "function": {
+    "name": "antsOnARod",
+    "params": [{ "name": "s", "type": "string" }],
+    "returns": "int[]"
+  },
+  "timeLimitMs": 1000,
+  "compare": "exact"
+}

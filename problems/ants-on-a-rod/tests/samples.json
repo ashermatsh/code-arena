@@ -1,0 +1,5 @@
+[
+{"args":["RL"],"expected":[1,0,1],"explanation":"The two ants walk into each other, collide once, reverse, and then walk off opposite ends. The maximum is 1, and both ants achieve it, so both indices follow."},
+{"args":["RRL"],"expected":[2,1],"explanation":"Ant 1 meets ant 2 first; both reverse. Ant 1 (now moving left) then meets ant 0 (still moving right); both reverse again. Ant 1 is involved in both collisions, while ants 0 and 2 have one each. The maximum is 2, achieved only by ant 1."},
+{"args":["LLRR"],"expected":[0,0,1,2,3],"explanation":"Every ant walks away from the others, so nobody ever collides. The maximum is 0 and all four ants achieve it."}
+]
