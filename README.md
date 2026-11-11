@@ -4,6 +4,8 @@ A small, self-hosted coding practice platform. Read a problem, write a solution 
 
 It ships with one problem, **Ants on a Rod**, which has 3 example tests, 43 hidden tests (11 of them with N ≈ 100,000, so O(N²) solutions time out), reference solutions in all four languages, an editorial, and a brute-force simulator that cross-checks every expected answer.
 
+**Try it: [ashermatsh.github.io/code-arena](https://ashermatsh.github.io/code-arena/)**, hosted on GitHub Pages. Python and JavaScript run right in your browser.
+
 ![Code Arena: an accepted C++ submission for Ants on a Rod](docs/screenshot.png)
 
 ## Features
@@ -36,11 +38,11 @@ docker compose up --build
 
 Open <http://localhost:3000>. The image bundles g++, OpenJDK 17, Python 3 and Node 22. The compose file runs the judge as a non-root user with a read-only filesystem, no Linux capabilities, a process limit, and memory/CPU caps.
 
-### Option 3: GitHub Pages (free hosting, no server)
+### Option 3: GitHub Pages (always on, no server)
 
 The front-end also works without a judge server. In that case it switches to **in-browser mode**: JavaScript runs in a Web Worker and Python runs in [Pyodide](https://pyodide.org) (CPython compiled to WebAssembly). C++ and Java need the server.
 
-The included workflow (`.github/workflows/pages.yml`) builds and deploys the site on every push to `main`. Turn it on once under **Settings → Pages → Build and deployment → Source: GitHub Actions**. To build the static site yourself:
+On every push to `main`, `.github/workflows/pages.yml` builds the static site and pushes it to the `gh-pages` branch. GitHub Pages serves that branch (**Settings → Pages → Deploy from a branch → `gh-pages` / root**). To build the static site yourself:
 
 ```bash
 npm run build:static
